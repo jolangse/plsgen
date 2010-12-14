@@ -126,6 +126,15 @@ E.g.:
 
 Changelog
 -------------------------
+* 0.3 -> 0.4
+# DONE: Removed some default values in config, allowing empty options
+# DONE: Added latest.php, a hybrid between index.php and rss.php ..
+# DONE: Gathered all user-related data in php-files as variables on top.
+# BUGFIX: Added missing alt-tags to img-tags generated
+# BUGFIX: Shipped templates and config now give validating HTML
+# BUGFIX: Prepped up index.php to validate aswell
+# REMOVED: Will not use perlmagick et. al, removed TODO.
+
 * 0.2 -> 0.3
 # DONE: Config option for size of view/thumbnail
 # DONE: Config option to disable arrow-up navigation
@@ -144,13 +153,12 @@ Changelog
 Todo-list
 -------------------------
 # TODO: Stripping of image suffix for HTML file w/config option?
+# TODO: Clear old generated files and meta on regen
+# TODO: Image title from EXIF for a title-template-tag.
+# TODO: Possibility for hide/show EXIF
 # TODO: Templating of EXIF
 # TODO: Priority/sorting of EXIF tags
-# TODO: Possibility for hide/show EXIF
-# TODO: Clear old generated files and meta on regen
-# TODO: Use perlmagick et. al instead of convert/jhead..
 # BUG:  The naive handling of filenames breaks on special characters
-
 
 Lisencing
 -------------------------

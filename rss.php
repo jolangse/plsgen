@@ -1,9 +1,9 @@
 <?php 
 
-$site_url = "http://photos.defcon.no";
-$stream_title = "photos.defcon.no gallerystream";
-$stream_description = "The latest entries in the photo galleries at defcon.no";
-$contact_address = "jon.langseth@lilug.no";
+$site_url = "http://site.example.com";
+$stream_title = "example.com photogallerystream";
+$stream_description = "The latest entries in a photo";
+$contact_address = "someone@example.com";
 
 $maxcount = 50;
 

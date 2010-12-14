@@ -4,7 +4,7 @@ body {
 	text-align: center;
 }
 a, a:visited {
-	color: wheat;
+	color: #F5DEB3;
 	text-decoration: none;
 	border: 0px;
 }
@@ -36,13 +36,13 @@ a img { border: 0px; }
 
 #display {
 	display: block;
-	float: center;
 }
 
 div.thumbnails {
 	clear: both;
 	display: block;
 }
+
 .thumb {
 	width: 170px;
 	height: 135px;
@@ -50,13 +50,14 @@ div.thumbnails {
 	padding: 0px;
         display: -moz-inline-stack;
 	display: inline-block;
-        /* zoom: 1;*/
+        zoom: 1;
         *display: inline;
         _height: 135px;
 
   	background-color: #2c2c29;
 	vertical-align: top;
 }
+
 .thumb img
 {
   	background-color: #2c2c29;
@@ -70,7 +71,7 @@ div.thumbnails {
 }
 .thumb a:hover img
 {
-  border:1px solid #black;
+  border:1px solid black;
 }
 
 #exifdata {
@@ -78,13 +79,15 @@ div.thumbnails {
 	width: 450px;
 	font-size: 8pt;
 	font-family: sans;
+	margin-left: auto;
+	margin-right: auto;
 }
 tr.exifhead { background: #2c2c29; }
 tr.exiflight { background: #5c5c59; }
 tr.exifdark { background: #3c3c30;}
 td { 
-margin: 0px; 
-padding: 2px 0 2px 10px; 
+	margin: 0px; 
+	padding: 2px 0 2px 10px; 
 }
 
 #timestamp {

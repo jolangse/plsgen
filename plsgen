@@ -7,10 +7,7 @@ use threads;
 use threads::shared;
 use strict;
 
-# DONE: Config option for size of view/thumbnail
-# DONE: Config option to disable arrow-up navigation
-# DONE: Config option to disable image rescaling ?
-# DONE: Consider multithreading
+# DONE: Removed some default values in config, allowing empty options
 # TODO: Stripping of image suffix for HTML file w/config option?
 # TODO: Templating of EXIF
 # TODO: Priority/sorting of EXIF tags
@@ -142,8 +139,8 @@ for ( my $i = 1; $i <= $imagecount; $i++)
 	else { $indexfile = "index" . $indexcount . ".html"; }
 	my $navscript = gen_navscript( $previous, $next, $indexfile );
 	my $position = $i . " of " . $imagecount;
-	my $prev_text = "<a href='" . $previous . ".html'><img src='thumb/" . $previous . "' /></a>";
-	my $next_text = "<a href='" . $next . ".html'><img src='thumb/" . $next . "' /></a>";
+	my $prev_text = "<a href='" . $previous . ".html'><img src='thumb/" . $previous . "' alt='Previous image' /></a>";
+	my $next_text = "<a href='" . $next . ".html'><img src='thumb/" . $next . "' alt='Next image' /></a>";
 	my $cur_index_text = "<a href='". $indexfile ."'>" . $idx_ret_text . "</a>";
 	my $current_display = $current;
 	$current_display = "view/" . $current unless $disable_rescale;
@@ -221,7 +218,7 @@ for ( my $i = 1; $i <= $imagecount; $i++)
 	close HTML;
 
 # - -   Append image thumbnail code to current index content
-	$thumbs .= $thumb_pre . "<a href='" . $current . ".html'><img src='thumb/" . $current . "' /></a>" . $thumb_post;
+	$thumbs .= $thumb_pre . "<a href='" . $current . ".html'><img src='thumb/" . $current . "' alt='View " . $current . "' /></a>" . $thumb_post;
 	if ( $i % ($rows*$columns) == 0 )
 	{
 		$thumbs .= "</div>";
@@ -423,7 +420,7 @@ sub get_config
 		    CASE   => 1,
 		    ERROR  => \&cfg_error,
 		    GLOBAL => {
-			DEFAULT  => "<unset>",
+			DEFAULT  => "<undef>",
 			ARGCOUNT => AppConfig::ARGCOUNT_ONE
 		    },
 		}
@@ -462,21 +459,14 @@ sub get_config
 	$cfg->disable_rescale(0);
 
 	$cfg->define('thumb_pre');
-	$cfg->thumb_pre("<div class='thumb'>");
 	$cfg->define('thumb_post');
-	$cfg->thumb_post("</div>");
 
 	$cfg->define('comment_pre');
-	$cfg->comment_pre("<div id='comment'>");
 	$cfg->define('comment_post');
-	$cfg->thumb_post("</div>");
 
 	$cfg->define('idx_prev_text');
-	$cfg->idx_prev_text("&larr; Back");
 	$cfg->define('idx_next_text');
-	$cfg->idx_next_text("Next &rarr;");
 	$cfg->define('idx_ret_text');
-	$cfg->idx_ret_text("To index");
 
 	$cfg->define('footer_tag');
 	$cfg->footer_tag('plsgen : Perl Simple Gallery Generator ' . $version);
