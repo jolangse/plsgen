@@ -23,6 +23,7 @@ a Web server. The generated result is static HTML,
 so no requirements at all exist in regard to type
 and functionality of HTTP daemon.
 
+
 Installation
 -------------------------
 
@@ -45,6 +46,7 @@ allows you to override the default locations.
 The shipped config lists all configuration options,
 along with their default values (used if no config present).
 
+
 Execution / Use
 -------------------------
 
@@ -63,6 +65,8 @@ Recognized commandline options are:
     --htmlonly
         Add this option to only generate HTML files
         No image operations will be performed with this option
+    --noexif
+        Forces EXIF data block not to be written to HTML output
     --config=/path/to/config
         Overrides default config file location.
         Default is to look for ./plsgen.cfg, then ../plsgen.cfg
@@ -70,14 +74,62 @@ Recognized commandline options are:
      --help
         Displays a list of available commandline options
 
+
+File overrides: comments, title, index image.
+------------------------------------------------------
+plsgen supports static gallery- and image comments. To get descriptive
+text or author comments on a gallery, add a file with the name 'comment.txt'
+to the directory before generating the album. The file is read, and injected
+verbatim, into all index* files generated, pre- and post-padded with the
+content of the comment-{pre,post} configuration variables.
+
+To add an image comment, create a text file named identically to the image 
+filename, plus the suffix .txt. So, if an image is named 'AnImage.JPG', the
+corresponding comment file should be named 'AnImage.JPG.txt'
+
+If you wish to pre-seed the gallery title, you may do so by putting the
+gallery title on a single line in a file named '.title'. The title is read
+from this file if no title is given on the command line, and it is present.
+Note that if a title is given on the command line, that title will be used,
+and also will overwrite any content in the .title file.
+
+A reference to an "index image", simply the first image in the set,
+is saved in the file '.indeximage', if this file does not previously exist.
+To override the chosen index image, simply put the filename you would
+rather have used in this file. The index image is used bu the included
+example index.php and rss.php
+
+
+Index front-end and RSS support
+-------------------------
+Included is a sample front-end index, and an accompanying RSS
+generator written using PHP. To use these, take a look at the PHP
+source, make personal adaptation (at least change references to my site
+to your own), and place both php files, plus indexstyle.css in a
+directory where you keep your albums as sub-directories.
+
+E.g.:
+  Web Root
+  |-- galleryset1
+  |   |-- image1.jpg
+  |   |-- image1.jpg.txt
+  |   |-- image2.jpg
+  |   |-- comment.txt
+  |    `- .title
+  |-- galleryset2
+  .     ...
+  |-- nav.js
+  |-- style.css
+  |-- index.php
+  |-- indexstyle.css
+   `- rss.php
+
+
 Todo-list
 -------------------------
-# TODO: filename.txt for file comments
 # TODO: Templating of EXIF
 # TODO: Priority/sorting of EXIF tags
 # TODO: Possibility for hide/show EXIF
-# TODO: RSS support? Delegate that to frontend?
-# TODO: Save reference to main-index thumbnail.
 # TODO: Clear old generated files and meta on regen
 # TODO: Use perlmagick et. al instead of convert/jhead..
 

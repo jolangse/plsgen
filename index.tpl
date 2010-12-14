@@ -18,6 +18,8 @@ Page %{position}
 
 %{thumbnails}
 
+%{comment}
+
 Album generated %{gallery_timestamp}
 
 <div id="footer">%{footer_tag}</div>

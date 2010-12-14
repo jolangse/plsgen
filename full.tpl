@@ -26,12 +26,19 @@
 </a>
 </div>
 
+%{comment}
+
 <div id="exifinfo">
 %{exif}
 </div>
 
+<div id="copyright">
+Copyright EDIT_FULL_TPL, all rights reserved.<br/>
+
 <div id="timestamp">
 Generated %{gallery_timestamp}
+</div>
+
 </div>
 <div id="footer">%{footer_tag}</div>
 

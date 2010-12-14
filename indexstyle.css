@@ -1,0 +1,97 @@
+body {
+	font-family :  Arial, Verdana, Geneva, Helvetica, sans-serif;
+	font-size: 12px;
+	background-color: black;
+	text-align: center
+}
+#wrapper {
+	margin-left: auto;
+	margin-right: auto;
+	width: 950px;
+}
+#head {
+	width: 925px;
+	background-color: #444;
+	border: 2px solid #2c2c29;
+	padding: 10px;
+	text-align: center;
+	color: wheat;
+}
+#head h1 {
+	font-size: 18px;
+	font-weight: bold;
+	margin: 0px;
+}
+#head-link {
+	font-size: 10px;
+	font-weight: italic;
+	margin-top: 10px;
+}
+a, a:visited {
+	color: white;
+}
+
+#content {
+	margin-top: 10px;
+	width: 100%;
+	background-color: black;
+	color: white;	
+	clear: both;
+	display: block;
+	text-align: center;
+}
+.title {
+	font-size: 11pt;
+	margin-top: 5px;
+	font-weight: bold;
+}
+.album {
+	width: 220px;
+	height: 225px;
+	margin: 5px;
+	padding: 0px;
+        display: -moz-inline-stack;
+	display: inline-block;
+        /* zoom: 1;*/
+        *display: inline;
+        _height: 225px;
+
+	vertical-align: top;
+	text-align: center;
+}
+.title {}
+.idxthumb {
+	width: 170px;
+	height: 135px;
+	margin: 5px;
+	padding: 0px;
+        display: -moz-inline-stack;
+	display: inline-block;
+        /* zoom: 1;*/
+        *display: inline;
+        _height: 135px;
+
+  	background-color: #2c2c29;
+	vertical-align: top;
+	text-align: center;
+
+}
+.idxthumb img
+{
+  	background-color: #2c2c29;
+	margin: 0px;
+	margin-top: 5px;
+	padding: 0px;
+}
+.idxthumb a img
+{
+  border:1px solid #2c2c29;
+}
+.idxthumb a:hover img
+{
+  border:1px solid #black;
+}
+
+
+.idxlink {}
+
