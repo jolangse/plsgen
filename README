@@ -1,4 +1,4 @@
-Perl Simple Gallery Generator v 0.1
+Perl Simple Gallery Generator v 0.3
 ==============================================
 
 Requirements
@@ -32,7 +32,7 @@ somewhere convenient on your Web server.
 
 * Place the template files (index.tpl, full.tpl)
 where You want, I prefer having them located in
-/usr/loca/share/plsgen
+/usr/local/share/plsgen
 
 * Place the executable script so that execution
 is practical. I place it as /usr/local/bin/plsgen so 
@@ -124,14 +124,33 @@ E.g.:
   |-- indexstyle.css
    `- rss.php
 
+Changelog
+-------------------------
+* 0.2 -> 0.3
+# DONE: Config option for size of view/thumbnail
+# DONE: Config option to disable arrow-up navigation
+# DONE: Config option to disable image rescaling ?
+# DONE: Multithreaded resizing, multiple resizes at the same time
+# BUGFIX: Version number now gets updated between versions :P
+
+* 0.1 -> 0.2
+# DONE: filename.txt for file comments
+# DONE: comment.txt for album comments
+# DONE: Save reference to main-index thumbnail.
+# DONE: Add command line option to disable EXIF block output
+# BUGFIX: Now generates for all images, including the last in set.
+# BUGFIX: Performs rotation according to EXIF
 
 Todo-list
 -------------------------
+# TODO: Stripping of image suffix for HTML file w/config option?
 # TODO: Templating of EXIF
 # TODO: Priority/sorting of EXIF tags
 # TODO: Possibility for hide/show EXIF
 # TODO: Clear old generated files and meta on regen
 # TODO: Use perlmagick et. al instead of convert/jhead..
+# BUG:  The naive handling of filenames breaks on special characters
+
 
 Lisencing
 -------------------------

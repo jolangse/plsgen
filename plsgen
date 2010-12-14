@@ -3,14 +3,23 @@ use Image::ExifTool;
 use POSIX;
 use AppConfig;
 use Getopt::Long;
+use threads;
+use threads::shared;
 use strict;
 
+# DONE: Config option for size of view/thumbnail
+# DONE: Config option to disable arrow-up navigation
+# DONE: Config option to disable image rescaling ?
+# DONE: Consider multithreading
+# TODO: Stripping of image suffix for HTML file w/config option?
 # TODO: Templating of EXIF
 # TODO: Priority/sorting of EXIF tags
 # TODO: Possibility for hide/show EXIF
-# TODO: RSS support? Delegate that to frontend?
 # TODO: Clear old generated files and meta on regen
 # TODO: Use perlmagick et. al instead of convert/jhead..
+# BUG:  The naive handling of filenames breaks on special characters
+
+my $version = "0.3";
 
 # Runtime data
 my $title = undef;
@@ -19,6 +28,8 @@ my $configfile = undef;
 my $halp = undef;
 my $album_comment = undef;
 my $doexif = 1;
+my $threadcounter = 0;
+share ( $threadcounter );
 
 GetOptions (
 	"title=s"	=> \$title,
@@ -29,7 +40,7 @@ GetOptions (
 );
 if ( $halp )
 {
-	print "\nplsgen version 0.1\n";
+	print "\nplsgen version " . $version . "\n";
 	print "Copyright Jon Langseth, BSD lisence\n\n";
 	print " --title='Your album title'\n";
 	print "     Sets the album title. Title will be stored in .title\n";
@@ -53,16 +64,23 @@ my $full_tpl_file 	= $config->full_tpl_file;
 my $index_tpl_file 	= $config->index_tpl_file;
 my $css_file 		= $config->css_file;
 my $navigation_script 	= $config->navigation_script;
+my $up_arrow_navigate	= $config->up_arrow_navigate;
+my $disable_rescale	= $config->disable_rescale;
 my $columns 		= $config->columns;
 my $rows 		= $config->rows;
 my $thumb_pre 		= $config->thumb_pre;
 my $thumb_post 		= $config->thumb_post;
+my $thumb_maxwidth	= $config->thumb_maxwidth;
+my $thumb_maxheight	= $config->thumb_maxheight;
+my $view_maxwidth	= $config->view_maxwidth;
+my $view_maxheight	= $config->view_maxheight;
 my $comment_pre 	= $config->comment_pre;
 my $comment_post 	= $config->comment_post;
 my $idx_prev_text 	= $config->idx_prev_text;
 my $idx_next_text 	= $config->idx_next_text;
 my $idx_ret_text 	= $config->idx_ret_text;
 my $footer_tag 		= $config->footer_tag;
+my $concurrent		= $config->concurrent_threads;
 
 # Get or save the title, depending..
 if ( (not $title) && ( -f ".title" ) )
@@ -127,8 +145,9 @@ for ( my $i = 1; $i <= $imagecount; $i++)
 	my $prev_text = "<a href='" . $previous . ".html'><img src='thumb/" . $previous . "' /></a>";
 	my $next_text = "<a href='" . $next . ".html'><img src='thumb/" . $next . "' /></a>";
 	my $cur_index_text = "<a href='". $indexfile ."'>" . $idx_ret_text . "</a>";
-	my $current_display = "view/" . $current;
-
+	my $current_display = $current;
+	$current_display = "view/" . $current unless $disable_rescale;
+	
 	# Check for, and load comment from FILENAME.txt here..
 	my $comment = undef;
 	if ( -f $current . ".txt" )
@@ -152,11 +171,20 @@ for ( my $i = 1; $i <= $imagecount; $i++)
 	}
 	my $exif_text = get_exifblock($exif) if $doexif;
 
-# - - Create thumbnail image (resize to new image)
-	system("convert " . $current . " -geometry '160x120>' thumb/" . $current) unless $htmlonly;
-# - - Create normal display image (resize to new image)
-	system("convert " . $current . " -geometry '800x600>' view/" . $current) unless $htmlonly;
+## - - Create thumbnail and normal view images, support threading
+	if ( not $htmlonly )
+	{
+		$threadcounter++;
+		my $thread = threads->create (
+			\&scale_image_t, 
+			$current, $thumb_maxwidth, $thumb_maxheight,
+			$view_maxwidth, $view_maxheight, $disable_rescale);
 
+		if ( $threadcounter >= $concurrent )
+		{
+			foreach my $thr ( threads->list() ) { $thr->join(); }
+		}
+	}
 # - - Save a reference to the "primary image"
 	if ( not -f ".indeximage" )
 	{
@@ -171,10 +199,8 @@ for ( my $i = 1; $i <= $imagecount; $i++)
 	{
 		if ( $previous ) { $_ =~ s/%\{previous\}/$prev_text/; } 
 		else { $_ =~ s/%\{previous\}//; } 
-
 		if ( $next ) { $_ =~ s/%\{next\}/$next_text/; }
 		else { $_ =~ s/%\{next\}//; }
-
 		$_ =~ s/%\{index\}/$cur_index_text/;
 		$_ =~ s/%\{title\}/$title/;
 		$_ =~ s/%\{main_meta\}/$main_meta/;
@@ -212,6 +238,9 @@ for ( my $i = 1; $i <= $imagecount; $i++)
 }
 $thumbs .= "</div>";
 make_index( $index_tpl_file, $indexcount, $indexes, $thumbs, $album_comment );
+
+printf ("Waiting for %d threads to finish\n", $threadcounter) if $threadcounter;
+foreach my $thr ( threads->list() ) { $thr->join(); }
 # Done.
 
 
@@ -300,8 +329,6 @@ sub get_exifdata ($)
 	$exif->{'ExposureCompensation'} = $info->{'ExposureCompensation'};
 	$exif->{'Flash'} = $info->{'Flash'};
 	$exif->{'FocalLength'} = $info->{'FocalLength'};
-	#$exif->{'ColorSpace'} = $info->{'ColorSpace'};
-	#$exif->{'FileSource'} = $info->{'FileSource'};
 	$exif->{'ExposureMode'} = $info->{'ExposureMode'};
 	$exif->{'Macro'} = $info->{'Macro'};
 	$exif->{'LensType'} = $info->{'LensType'};
@@ -350,10 +377,32 @@ sub gen_navscript
 	my $scriptbuffer = "<script type='text/javascript'>\n";
 	$scriptbuffer .= "\tnav_reg_prev('" . $prev . "');\n" if $prev;
 	$scriptbuffer .= "\tnav_reg_next('" . $next . "');\n" if $next;
-	$scriptbuffer .= "\tnav_reg_index('" . $index . "');\n" if $index;
+	if ( $up_arrow_navigate == 1 )
+	{
+		$scriptbuffer .= "\tnav_reg_index('" . $index . "');\n" if $index;
+	}
 	$scriptbuffer .= "\tnav_reg_onkeypress();\n";
 	$scriptbuffer .= "</script>\n";
 	return $scriptbuffer;
+}
+
+sub scale_image_t
+{
+	my $current = shift;
+	my $thumb_maxwidth = shift;
+	my $thumb_maxheight = shift;
+	my $view_maxwidth = shift;
+	my $view_maxheight = shift;
+	my $disable_rescale = shift;
+
+	my $tgeom = $thumb_maxwidth . "x" . $thumb_maxheight;
+	my $vgeom = $view_maxwidth . "x" . $view_maxheight;
+	# - - Create thumbnail image (resize to new image)
+	system("convert " . $current . " -geometry '" . $tgeom . ">' thumb/" . $current);
+	# - - Create normal display image (resize to new image)
+	system("convert " . $current . " -geometry '" . $vgeom . ">' view/" . $current) unless $disable_rescale;
+	$threadcounter--;
+
 }
 
 sub get_config
@@ -384,30 +433,53 @@ sub get_config
 	$cfg->full_tpl_file("/usr/local/share/plsgen/full.tpl");
 	$cfg->define('index_tpl_file');
 	$cfg->index_tpl_file("/usr/local/share/plsgen/index.tpl");
+
 	$cfg->define('css_file');
 	$cfg->css_file("../style.css");
 	$cfg->define('navigation_script');
 	$cfg->navigation_script("../nav.js");
+
+	$cfg->define('up_arrow_navigate');
+	$cfg->up_arrow_navigate(1);
+
 	$cfg->define('columns');
 	$cfg->columns(4);
 	$cfg->define('rows');
 	$cfg->rows(3);
+
+	$cfg->define('concurrent_threads');
+	$cfg->concurrent_threads(1);
+
+        $cfg->define('thumb_maxwidth');
+	$cfg->thumb_maxwidth(160);
+        $cfg->define('thumb_maxheight');
+	$cfg->thumb_maxheight(120);
+        $cfg->define('view_maxwidth');
+	$cfg->view_maxwidth(800);
+        $cfg->define('view_maxheight');
+	$cfg->view_maxwidth(600);
+	$cfg->define('disable_rescale');
+	$cfg->disable_rescale(0);
+
 	$cfg->define('thumb_pre');
 	$cfg->thumb_pre("<div class='thumb'>");
 	$cfg->define('thumb_post');
 	$cfg->thumb_post("</div>");
+
 	$cfg->define('comment_pre');
 	$cfg->comment_pre("<div id='comment'>");
 	$cfg->define('comment_post');
 	$cfg->thumb_post("</div>");
+
 	$cfg->define('idx_prev_text');
 	$cfg->idx_prev_text("&larr; Back");
 	$cfg->define('idx_next_text');
 	$cfg->idx_next_text("Next &rarr;");
 	$cfg->define('idx_ret_text');
 	$cfg->idx_ret_text("To index");
+
 	$cfg->define('footer_tag');
-	$cfg->footer_tag('plsgen : Perl Simple Gallery Generator 0.1');
+	$cfg->footer_tag('plsgen : Perl Simple Gallery Generator ' . $version);
 
 	$cfg->file($filename) if -f $filename;
 	return $cfg;
