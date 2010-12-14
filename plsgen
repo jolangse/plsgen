@@ -1,0 +1,373 @@
+#!/usr/bin/perl
+use Image::ExifTool;
+use POSIX;
+use AppConfig;
+use Getopt::Long;
+use strict;
+
+# TODO: filename.txt for file comments
+# TODO: Templating of EXIF
+# TODO: Priority/sorting of EXFI tags
+# TODO: Possibility for hide/show EXIF
+# TODO: RSS support? Delegate that to frontend?
+# TODO: Save reference to main-index thumbnail.
+# TODO: Clear old generated files and meta on regen
+# TODO: Use perlmagick et. al instead of convert/jhead..
+
+# Runtime data
+my $title = undef;
+my $htmlonly = 0;
+my $configfile = undef;
+my $halp = undef;
+
+GetOptions (
+	"title=s"	=> \$title,
+	"htmlonly!"	=> \$htmlonly,
+	"config=s"	=> \$configfile,
+	"help"		=> \$halp
+);
+if ( $halp )
+{
+	print "\nplsgen version 0.1\n";
+	print "Copyright Jon Langseth, BSD lisence\n\n";
+	print " --title='Your album title'\n";
+	print "     Sets the album title. Title will be stored in .title\n";
+	print "     If no title is given, it will be read from .title, if present\n";
+	print " --htmlonly\n";
+	print "     Add this option to only generate HTML files\n";
+	print "     No image operations will be performed with this option\n";
+	print " --config=/path/to/config\n";
+	print "     Overrides default config file location.\n";
+	print "     Default is to look for ./plsgen.cfg, then ../plsgen.cfg\n";
+	print "     and finally /etc/plsgen.cfg.\n";
+	print "\n";
+	exit;
+}
+
+# Configuration data
+my $config = get_config( $configfile );
+my $full_tpl_file 	= $config->full_tpl_file;
+my $index_tpl_file 	= $config->index_tpl_file;
+my $css_file 		= $config->css_file;
+my $navigation_script 	= $config->navigation_script;
+my $columns 		= $config->columns;
+my $rows 		= $config->rows;
+my $thumb_pre 		= $config->thumb_pre;
+my $thumb_post 		= $config->thumb_post;
+my $idx_prev_text 	= $config->idx_prev_text;
+my $idx_next_text 	= $config->idx_next_text;
+my $idx_ret_text 	= $config->idx_ret_text;
+my $footer_tag 		= $config->footer_tag;
+
+# Get or save the title, depending..
+if ( (not $title) && ( -f ".title" ) )
+{
+	open TF, "<.title";
+	$title = <TF>;
+	chomp($title);
+	close TF;
+}
+elsif ( $title )
+{
+	open TF, ">.title";
+	print TF $title . "\n";
+	close TF;
+}
+
+mkdir "thumb";
+mkdir "view";
+
+# Glob file names to an array
+my @images = glob("*png *.jpg *.JPG *.gif *.GIF");
+# Keep count of total number of images
+my $imagecount = $#images;
+
+my ($current, $previous, $next);
+my $indexcount = 1;
+my $indexfile;
+
+my $main_meta = "<link rel='stylesheet' href='" . $css_file . "' type='text/css' />";
+my $navigation_header = "<script type='text/javascript' src='" . $navigation_script . "'></script>";
+
+my $thumbs = "<div class='thumbnails'>";
+
+my $indexes = ceil( $imagecount/($rows*$columns) );
+my $gentime = localtime;
+
+# In groups of N ( X rows x Y colums of index):
+# - Step through image array:
+for ( my $i = 1; $i <= $imagecount; $i++)
+{
+	$current = $images[$i-1];
+# - -   Previous image is previous location in array, unless cur=first
+	$previous = $images[$i-2] if $i > 1;
+	$previous = undef if  $i == 1;
+# - -   Next image is next location in array, unless cur=last.
+	$next = $images[$i] if $i < ( $imagecount);
+	$next = undef if $i >= ( $imagecount);
+
+	#Set up text-strings for template replacement
+	if ( $indexcount == 1 ) { $indexfile = "index.html"; } 
+	else { $indexfile = "index" . $indexcount . ".html"; }
+	my $navscript = gen_navscript( $previous, $next, $indexfile );
+	my $position = $i . " of " . $imagecount;
+	my $prev_text = "<a href='" . $previous . ".html'><img src='thumb/" . $previous . "' /></a>";
+	my $next_text = "<a href='" . $next . ".html'><img src='thumb/" . $next . "' /></a>";
+	my $cur_index_text = "<a href='". $indexfile ."'>" . $idx_ret_text . "</a>";
+	my $current_display = "view/" . $current;
+
+	printf ("Processing image %s: %s\n", $position, $current);
+
+# - - If rotated according to EXIF, do rotation
+	my $exif = get_exifdata( $current );
+	if ( $exif->{'Orientation'} =~ m/rotate/i )
+	{
+		system("jhead -autorot " . $current . ">/dev/null") unless $htmlonly;
+	}
+	my $exif_text = get_exifblock($exif);
+
+# - - Create thumbnail image (resize to new image)
+	system("convert " . $current . " -geometry '160x120>' thumb/" . $current) unless $htmlonly;
+# - - Create normal display image (resize to new image)
+	system("convert " . $current . " -geometry '800x600>' view/" . $current) unless $htmlonly;
+
+# - - Create full view HTML file
+	my $cur_html;
+	open TEMPLATE, "<" . $full_tpl_file or die "UNABLE TO LOAD TEMPLATE $full_tpl_file\n";
+	while (<TEMPLATE>)
+	{
+		if ( $previous ) { $_ =~ s/%\{previous\}/$prev_text/; } 
+		else { $_ =~ s/%\{previous\}//; } 
+
+		if ( $next ) { $_ =~ s/%\{next\}/$next_text/; }
+		else { $_ =~ s/%\{next\}//; }
+
+		$_ =~ s/%\{index\}/$cur_index_text/;
+		$_ =~ s/%\{title\}/$title/;
+		$_ =~ s/%\{main_meta\}/$main_meta/;
+		$_ =~ s/%\{navigation_script\}/$navigation_header/;
+		$_ =~ s/%\{position\}/$position/;
+		$_ =~ s/%\{current\}/$current/;
+		$_ =~ s/%\{current_display\}/$current_display/;
+		$_ =~ s/%\{exif\}/$exif_text/;
+		$_ =~ s/%\{gallery_timestamp\}/$gentime/;
+		$_ =~ s/%\{navscript\}/$navscript/;
+		$_ =~ s/%\{footer_tag\}/$footer_tag/;
+		$cur_html .= $_;
+	}
+	close TEMPLATE;
+	open HTML, ">" . $current . ".html" or die "UNABLE TO WRITE\n";
+	print HTML $cur_html;
+	close HTML;
+
+# - -   Append image thumbnail code to current index content
+	$thumbs .= $thumb_pre . "<a href='" . $current . ".html'><img src='thumb/" . $current . "' /></a>" . $thumb_post;
+	if ( $i % ($rows*$columns) == 0 )
+	{
+		$thumbs .= "</div>";
+# - - On each Y, terminate index file/group:
+		make_index( $index_tpl_file, $indexcount, $indexes, $thumbs);
+		$thumbs = "<div class='thumbnails'>";
+		$indexcount++;
+	}
+	elsif ( $i % ($columns) == 0 )
+	{
+# - - On each X, terminate index content row 
+		$thumbs .= "\n</div>\n<div class='thumbnails'>";
+	}
+}
+$thumbs .= "</div>";
+make_index( $index_tpl_file, $indexcount, $indexes, $thumbs);
+# Done.
+
+
+# -------------- Functions supporting above code -----------------------
+sub make_index
+{
+	my $tpl = shift;
+	my $idxcount = shift;
+	my $lastidx = shift;
+	my $thumbs = shift;
+
+	my $gentime = localtime;
+	my $html;
+
+	my $prev_file;
+	my $prev_text;
+	my $next_file;
+	my $next_text;
+	my $indexfile;
+
+	# If index counter is 1, filename is index.html
+	$indexfile = ( $indexcount ==1 ) ? "index.html" : "index" . $idxcount . ".html";
+
+	# If index counter is > 1, add previous index link.
+	if ( $idxcount > 1 ) 
+	{
+		$prev_file = "index" . ($idxcount-1) . ".html";
+		$prev_file = "index.html" if ( $idxcount == 2 );
+		$prev_text = "<a href='$prev_file'>" . $idx_prev_text . "</a>";
+	} 
+
+	# If current image is last in array, do not add nex-index link
+	if ( $idxcount < $lastidx ) 
+	{
+		$next_file = "index" . ($idxcount+1) . ".html";
+		$next_text = "<a href='" . $next_file . "'>" . $idx_next_text . "</a>";
+	}
+
+	my $position = $indexcount . " of " . $lastidx;
+	my $navscript = gen_navscript( $prev_file, $next_file );
+
+	open TEMPLATE, "<" . $tpl or die "UNABLE TO LOAD TEMPLATE\n";
+	while (<TEMPLATE>)
+	{
+		$_ =~ s/%\{previous\}/$prev_text/;
+		$_ =~ s/%\{next\}/$next_text/;
+		$_ =~ s/%\{title\}/$title/;
+		$_ =~ s/%\{position\}/$position/;
+		$_ =~ s/%\{main_meta\}/$main_meta/;
+		$_ =~ s/%\{navigation_script\}/$navigation_header/;
+		$_ =~ s/%\{thumbnails\}/$thumbs/;
+		$_ =~ s/%\{gallery_timestamp\}/$gentime/;
+		$_ =~ s/%\{navscript\}/$navscript/;
+		$_ =~ s/%\{footer_tag\}/$footer_tag/;
+		$html .= $_;
+	}
+	close TEMPLATE;
+	open HTML, ">" . $indexfile or die "UNABLE TO WRITE\n";
+	print HTML $html;
+	close HTML;
+
+}
+
+sub get_exifdata ($)
+{
+	my $image = shift;
+	my $exifTool = new Image::ExifTool;
+	$exifTool->Options(Unknown => 1);
+
+	my $exif;
+    	my $info = $exifTool->ImageInfo($image);
+	$exif->{'Make'} = $info->{'Make'};
+	$exif->{'Model'} = $info->{'Model'};
+	#$exif->{'Orientation'} = $info->{'Orientation'};
+	$exif->{'ExposureTime'} = $info->{'ExposureTime'};
+	$exif->{'FNumber'} = $info->{'FNumber'};
+	$exif->{'ISO'} = $info->{'ISO'};
+	$exif->{'CreateDate'} = $info->{'CreateDate'};
+	$exif->{'ExposureCompensation'} = $info->{'ExposureCompensation'};
+	$exif->{'Flash'} = $info->{'Flash'};
+	$exif->{'FocalLength'} = $info->{'FocalLength'};
+	#$exif->{'ColorSpace'} = $info->{'ColorSpace'};
+	#$exif->{'FileSource'} = $info->{'FileSource'};
+	$exif->{'ExposureMode'} = $info->{'ExposureMode'};
+	$exif->{'Macro'} = $info->{'Macro'};
+	$exif->{'LensType'} = $info->{'LensType'};
+	return $exif;
+}
+
+sub get_exifblock 
+{
+	my $exif = shift;
+	my $exifTool = new Image::ExifTool;
+	my $block = "<table id='exifdata' cellspacing='0'>\n";
+	$block .= "<tr class='exifhead'><td>EXIF Parameter</td><td>Value</td></tr>\n";
+	my $tagcount = 0;
+	my $flipflop = 0;
+	foreach my $tag ( keys %$exif )
+	{
+		my $val = $exif->{$tag};
+		next unless $val;
+		$block .= "<tr class='exiflight'>" if $flipflop;
+		$block .= "<tr class='exifdark'>"  if not $flipflop;
+		$block .= "\t<td>";
+		$block .= $exifTool->GetDescription($tag);
+		$block .= "</td>\n";
+		$block .= "\t<td>";
+		$block .= $val;
+		$block .= "</td>\n";
+		$block .= "</tr>\n";
+		$flipflop = not $flipflop;
+		$tagcount++;
+	}
+	$block .= "</table>";
+	$block = undef if not $tagcount;
+	return $block;
+}
+
+sub gen_navscript
+{
+	my $prev = shift;
+	my $next = shift;
+	my $index = shift;
+
+	$prev =~ s/\.html//;
+	$next =~ s/\.html//;
+
+	my $scriptbuffer = "<script type='text/javascript'>\n";
+	$scriptbuffer .= "\tnav_reg_prev('" . $prev . "');\n" if $prev;
+	$scriptbuffer .= "\tnav_reg_next('" . $next . "');\n" if $next;
+	$scriptbuffer .= "\tnav_reg_index('" . $index . "');\n" if $index;
+	$scriptbuffer .= "\tnav_reg_onkeypress();\n";
+	$scriptbuffer .= "</script>\n";
+	return $scriptbuffer;
+}
+
+sub get_config
+{
+	# My standard way of implementing AppConfig use ...
+	my $filename = shift;
+	if ( not $filename )
+	{
+		my @files = ( "./plsgen.cfg", "../plsgen.cfg", "/etc/plsgen.cfg" );
+		foreach my $file ( @files ) {
+			$filename = $file;
+			last if ( -f $filename );
+		}
+	}
+
+	my $cfg = AppConfig->new(
+		{
+		    CASE   => 1,
+		    ERROR  => \&cfg_error,
+		    GLOBAL => {
+			DEFAULT  => "<unset>",
+			ARGCOUNT => AppConfig::ARGCOUNT_ONE
+		    },
+		}
+
+	);
+	$cfg->define('full_tpl_file');
+	$cfg->full_tpl_file("/usr/local/share/plsgen/full.tpl");
+	$cfg->define('index_tpl_file');
+	$cfg->index_tpl_file("/usr/local/share/plsgen/index.tpl");
+	$cfg->define('css_file');
+	$cfg->css_file("../style.css");
+	$cfg->define('navigation_script');
+	$cfg->navigation_script("../nav.js");
+	$cfg->define('columns');
+	$cfg->columns(4);
+	$cfg->define('rows');
+	$cfg->rows(3);
+	$cfg->define('thumb_pre');
+	$cfg->thumb_pre("<div class='thumb'>");
+	$cfg->define('thumb_post');
+	$cfg->thumb_post("</div>");
+	$cfg->define('idx_prev_text');
+	$cfg->idx_prev_text("&larr; Back");
+	$cfg->define('idx_next_text');
+	$cfg->idx_next_text("Next &rarr;");
+	$cfg->define('idx_ret_text');
+	$cfg->idx_ret_text("To index");
+	$cfg->define('footer_tag');
+	$cfg->footer_tag('plsgen : Perl Simple Gallery Generator 0.1');
+
+	$cfg->file($filename) if -f $filename;
+	return $cfg;
+}
+
+sub cfg_error {
+    die "Error occured in config-handling: $_\n";
+}
+

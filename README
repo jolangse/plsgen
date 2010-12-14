@@ -1,0 +1,106 @@
+Perl Simple Gallery Generator v 0.1
+==============================================
+
+Requirements
+------------------------
+
+Perl modules
+ * Image::ExifTool
+   http://search.cpan.org/~exiftool/Image-ExifTool-8.15/
+ * AppConfig
+   http://search.cpan.org/~abw/AppConfig/
+ * Getopt::Long (shipped with perl5->)
+   http://search.cpan.org/~jv/Getopt-Long-2.38/
+
+Programs:
+ * convert from ImageMagick
+   http://www.imagemagick.org/
+ * jhead
+   http://www.sentex.net/~mwandel/jhead/
+
+And, of course you probably want to publish whis on
+a Web server. The generated result is static HTML,
+so no requirements at all exist in regard to type
+and functionality of HTTP daemon.
+
+Installation
+-------------------------
+
+* Place the navigation JavaScript and the CSS file
+somewhere convenient on your Web server.
+
+* Place the template files (index.tpl, full.tpl)
+where You want, I prefer having them located in
+/usr/loca/share/plsgen
+
+* Place the executable script so that execution
+is practical. I place it as /usr/local/bin/plsgen so 
+that I have it in my search path.
+
+* Take a look at the shipped configuration file.
+plsgen looks for a config file as /etc/plsgen.cfg,
+as ./plsgen.cfg or ../plgen.cfg relative to where
+it is executed. Alternatively, the --config option
+allows you to override the default locations.
+The shipped config lists all configuration options,
+along with their default values (used if no config present).
+
+Execution / Use
+-------------------------
+
+plsgen is written to be ececuted in a directory filled
+with image files, and will create all its data
+in this directory. The resulting album will list
+all present image files of types JPG, PNG and GIF.
+A display-size and thumbnail image will be created
+for each image, and will be stored in the sub-directories
+view and thumbs (respectively).
+
+Recognized commandline options are:
+    --title='Your album title'
+        Sets the album title. Title will be stored in .title
+        If no title is given, it will be read from .title, if present
+    --htmlonly
+        Add this option to only generate HTML files
+        No image operations will be performed with this option
+    --config=/path/to/config
+        Overrides default config file location.
+        Default is to look for ./plsgen.cfg, then ../plsgen.cfg
+        and finally /etc/plsgen.cfg.
+     --help
+        Displays a list of available commandline options
+
+Todo-list
+-------------------------
+# TODO: filename.txt for file comments
+# TODO: Templating of EXIF
+# TODO: Priority/sorting of EXIF tags
+# TODO: Possibility for hide/show EXIF
+# TODO: RSS support? Delegate that to frontend?
+# TODO: Save reference to main-index thumbnail.
+# TODO: Clear old generated files and meta on regen
+# TODO: Use perlmagick et. al instead of convert/jhead..
+
+Lisencing
+-------------------------
+Copyright (c) 2010, Jon Langseth
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL JON LANGSETH BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
